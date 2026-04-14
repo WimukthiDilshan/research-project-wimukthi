@@ -1,4 +1,5 @@
 import React from 'react';
+import ClassLoadBoxPlot from './ClassLoadBoxPlot';
 
 export default function ClassSummary({ summary, recommendation }) {
   if (!summary) {
@@ -29,6 +30,10 @@ export default function ClassSummary({ summary, recommendation }) {
             <span className="count-label">{label}</span>
           </div>
         ))}
+      </div>
+      <div className="text-block">
+        <h4>Cognitive Load Distribution</h4>
+        <ClassLoadBoxPlot values={summary.cognitive_load_distribution ?? []} />
       </div>
       <div className="text-block">
         <h4>Common Factors</h4>

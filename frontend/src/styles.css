@@ -188,6 +188,14 @@ select {
   color: var(--text);
 }
 
+.box-plot-wrap {
+  margin-top: 10px;
+}
+
+.tiny-text {
+  font-size: 0.82rem;
+}
+
 .factor-grid {
   display: grid;
   gap: 14px;

@@ -11,6 +11,13 @@ from models.class_summary_models import ClassSummary, CommonFactor, CognitiveLoa
 from repositories.explainability_repository import get_student_lesson_explanations_by_lesson_id
 
 COGNITIVE_LOAD_ORDER = ["Very Low", "Low", "Medium", "High", "Very High"]
+COGNITIVE_LOAD_TO_NUMBER = {
+    "Very Low": 1,
+    "Low": 2,
+    "Medium": 3,
+    "High": 4,
+    "Very High": 5,
+}
 FACTOR_FIELDS = ["shap_top_factors", "lime_top_factors", "agreed_top_factors"]
 
 
@@ -78,6 +85,15 @@ def _count_cognitive_loads(rows: list[dict[str, Any]]) -> dict[str, int]:
     return counts
 
 
+def _build_cognitive_load_distribution(rows: list[dict[str, Any]]) -> list[int]:
+    distribution: list[int] = []
+    for row in rows:
+        label = _extract_label(row)
+        if label is not None:
+            distribution.append(COGNITIVE_LOAD_TO_NUMBER[label])
+    return distribution
+
+
 def _aggregate_common_factors(rows: list[dict[str, Any]]) -> list[CommonFactor]:
     factor_counts: Counter[str] = Counter()
 
@@ -116,4 +132,5 @@ def generate_class_summary(
         cognitive_load_counts=CognitiveLoadCounts.model_validate(counts),
         dominant_cognitive_load=_dominant_label(counts),
         common_factors=_aggregate_common_factors(rows),
+        cognitive_load_distribution=_build_cognitive_load_distribution(rows),
     )
