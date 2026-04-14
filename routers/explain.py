@@ -7,7 +7,9 @@ from models.explanation_models import (
     ExplainResponse,
     GenerateStudentExplanationsResponse,
 )
+from models.class_summary_models import ClassRecommendationRequest, ClassRecommendationResponse
 from services.explanation_service import build_explanation
+from services.class_recommendation_service import generate_class_recommendation
 from services.lesson_explanation_generation_service import generate_student_explanations_for_lesson
 from services.student_explanation_service import generate_student_explanation
 
@@ -40,3 +42,17 @@ def generate_lesson_student_explanations(
     db: Session = Depends(get_db),
 ) -> GenerateStudentExplanationsResponse:
     return generate_student_explanations_for_lesson(db, lesson_id)
+
+
+@router.post(
+    "/lessons/{lesson_id}/generate-class-recommendation",
+    response_model=ClassRecommendationResponse,
+)
+def generate_lesson_class_recommendation(
+    lesson_id: int,
+    request: ClassRecommendationRequest,
+    db: Session = Depends(get_db),
+) -> ClassRecommendationResponse:
+    # Real GPT generation will be integrated here later; this path keeps the contract stable.
+    class_summary = request.class_summary.model_copy(update={"lesson_id": lesson_id})
+    return generate_class_recommendation(db, class_summary)

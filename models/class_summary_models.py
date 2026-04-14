@@ -27,3 +27,13 @@ class ClassSummary(BaseModel):
     cognitive_load_counts: CognitiveLoadCounts
     dominant_cognitive_load: CognitiveLoadLabel | None = None
     common_factors: list[CommonFactor]
+
+
+class ClassRecommendationRequest(BaseModel):
+    class_summary: ClassSummary
+
+
+class ClassRecommendationResponse(BaseModel):
+    lesson_id: int
+    next_lesson_recommendation: str
+    saved_row_id: int | None = None
