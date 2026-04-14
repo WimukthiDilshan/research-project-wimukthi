@@ -4,6 +4,7 @@ import json
 from collections import Counter
 from typing import Any
 
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from models.class_summary_models import ClassSummary, CommonFactor, CognitiveLoadCounts
@@ -98,6 +99,16 @@ def generate_class_summary(
     lesson_id: int,
 ) -> ClassSummary:
     rows = get_student_lesson_explanations_by_lesson_id(db, lesson_id)
+    if not rows:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "success": False,
+                "message": "No saved student explanations found for the requested lesson.",
+                "data": None,
+                "errors": [f"lesson_id={lesson_id} not found"],
+            },
+        )
     counts = _count_cognitive_loads(rows)
     return ClassSummary(
         lesson_id=lesson_id,

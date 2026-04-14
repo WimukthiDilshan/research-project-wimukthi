@@ -34,6 +34,30 @@ def get_students_by_lesson_id(
     return fetch_all(db, query, {"lesson_id": lesson_id})
 
 
+def get_lesson_overviews(
+    db: Session,
+) -> list[dict[str, Any]]:
+    query = (
+        "SELECT lesson_id, COUNT(DISTINCT student_id) AS total_students "
+        "FROM cognitive_load_logs "
+        "GROUP BY lesson_id "
+        "ORDER BY lesson_id"
+    )
+    return fetch_all(db, query)
+
+
+def get_unique_students_by_lesson_id(
+    db: Session,
+    lesson_id: int,
+) -> list[dict[str, Any]]:
+    query = (
+        "SELECT DISTINCT student_id FROM cognitive_load_logs "
+        "WHERE lesson_id = :lesson_id "
+        "ORDER BY student_id"
+    )
+    return fetch_all(db, query, {"lesson_id": lesson_id})
+
+
 def get_student_lesson_explanations_by_lesson_id(
     db: Session,
     lesson_id: int,
