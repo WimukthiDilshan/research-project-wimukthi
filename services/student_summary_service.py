@@ -30,6 +30,7 @@ COGNITIVE_LABEL_KEYS = [
 
 
 def _to_float(value: Any) -> float | None:
+    """Convert an input value to float when possible."""
     if value is None:
         return None
     if isinstance(value, (int, float)):
@@ -46,6 +47,7 @@ def _to_float(value: Any) -> float | None:
 
 
 def _average_for_field(rows: list[dict[str, Any]], field_name: str) -> float | None:
+    """Compute the average for one numeric field across log rows."""
     values: list[float] = []
     for row in rows:
         numeric_value = _to_float(row.get(field_name))
@@ -59,6 +61,7 @@ def _average_for_field(rows: list[dict[str, Any]], field_name: str) -> float | N
 
 
 def _extract_cognitive_load_label(row: dict[str, Any]) -> str | None:
+    """Extract the predicted label from a log row if one exists."""
     for key in COGNITIVE_LABEL_KEYS:
         value = row.get(key)
         if isinstance(value, str):
@@ -69,6 +72,7 @@ def _extract_cognitive_load_label(row: dict[str, Any]) -> str | None:
 
 
 def _count_cognitive_load_labels(rows: list[dict[str, Any]]) -> dict[str, int]:
+    """Count how many times each cognitive load label appears."""
     counts = {label: 0 for label in COGNITIVE_LOAD_LABELS}
 
     for row in rows:
@@ -80,6 +84,7 @@ def _count_cognitive_load_labels(rows: list[dict[str, Any]]) -> dict[str, int]:
 
 
 def _dominant_label(counts: dict[str, int]) -> str | None:
+    """Return the most frequent label using a stable tie-break order."""
     max_count = max(counts.values()) if counts else 0
     if max_count <= 0:
         return None
@@ -97,6 +102,7 @@ def generate_student_summary(
     student_id: int,
     lesson_id: int,
 ) -> dict[str, Any]:
+    """Build a student-level summary object from raw cognitive load logs."""
     rows = get_cognitive_load_logs_by_student_and_lesson(db, student_id, lesson_id)
 
     averages = {

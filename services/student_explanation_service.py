@@ -23,11 +23,12 @@ from services.student_summary_service import generate_student_summary
 
 
 def _normalize_final_cognitive_load(final_cognitive_load: str | None) -> str:
-    # Keep the endpoint stable even when a student has no logs yet.
+    """Keep the endpoint stable even when a student has no logs yet."""
     return final_cognitive_load or "Medium"
 
 
 def _build_explain_request(student_summary: dict[str, object], final_cognitive_load: str | None) -> ExplainRequest:
+    """Transform a raw student summary dictionary into the explain API request model."""
     summary_payload = student_summary.get("summary", {})
     averages_payload = summary_payload.get("averages", {}) if isinstance(summary_payload, dict) else {}
     counts_payload = summary_payload.get("counts", {}) if isinstance(summary_payload, dict) else {}
@@ -42,10 +43,12 @@ def _build_explain_request(student_summary: dict[str, object], final_cognitive_l
 
 
 def _flatten_averages(averages: SummaryAverages) -> dict[str, float | None]:
+    """Convert the averages model into a plain dictionary for persistence."""
     return averages.model_dump()
 
 
 def _serialize_factors(factors: list[object]) -> str:
+    """Serialize explanation factors to JSON for database storage."""
     return json.dumps([factor.model_dump() for factor in factors], ensure_ascii=False)
 
 
@@ -53,19 +56,27 @@ def _build_save_payload(
     student_id: int,
     lesson_id: int,
     final_cognitive_load: str,
+    counts: SummaryCounts,
     averages: SummaryAverages,
     explanation: ExplainResponse,
 ) -> dict[str, object]:
+    """Shape the student explanation payload to the existing table columns."""
     flattened_averages = _flatten_averages(averages)
+    flattened_counts = counts.model_dump(by_alias=True)
     payload: dict[str, object] = {
         "student_id": student_id,
         "lesson_id": lesson_id,
         "final_cognitive_load": final_cognitive_load,
         "explanation_text": explanation.explanation_text,
         "recommendation_text": explanation.recommendation_text,
-        "shap_top_factors": _serialize_factors(explanation.shap_top_factors),
-        "lime_top_factors": _serialize_factors(explanation.lime_top_factors),
-        "agreed_top_factors": _serialize_factors(explanation.agreed_top_factors),
+        "very_low_count": flattened_counts.get("Very Low", 0),
+        "low_count": flattened_counts.get("Low", 0),
+        "medium_count": flattened_counts.get("Medium", 0),
+        "high_count": flattened_counts.get("High", 0),
+        "very_high_count": flattened_counts.get("Very High", 0),
+        "shap_top_factors_json": _serialize_factors(explanation.shap_top_factors),
+        "lime_top_factors_json": _serialize_factors(explanation.lime_top_factors),
+        "agreed_top_factors_json": _serialize_factors(explanation.agreed_top_factors),
     }
     payload.update(flattened_averages)
     return payload
@@ -76,6 +87,7 @@ def generate_student_explanation_record(
     student_id: int,
     lesson_id: int,
 ) -> GeneratedStudentExplanation:
+    """Build, explain, and persist one student's lesson explanation."""
     student_summary = generate_student_summary(db, student_id, lesson_id)
     explain_request = _build_explain_request(
         student_summary,
@@ -88,6 +100,7 @@ def generate_student_explanation_record(
             student_id=student_id,
             lesson_id=lesson_id,
             final_cognitive_load=explain_request.final_cognitive_load,
+            counts=explain_request.summary.counts,
             averages=explain_request.summary.averages,
             explanation=explanation,
         ),
@@ -112,6 +125,7 @@ def generate_student_explanation_preview(
     student_id: int,
     lesson_id: int,
 ) -> StudentExplanationData:
+    """Build a read-only explanation response for the frontend."""
     rows = get_cognitive_load_logs_by_student_and_lesson(db, student_id, lesson_id)
     if not rows:
         raise HTTPException(
@@ -149,6 +163,7 @@ def generate_student_explanation(
     student_id: int,
     lesson_id: int,
 ) -> ExplainResponse:
+    """Return the raw explain response without saving it."""
     student_summary = generate_student_summary(db, student_id, lesson_id)
     explain_request = _build_explain_request(
         student_summary,

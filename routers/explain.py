@@ -25,6 +25,7 @@ router = APIRouter(tags=["explainability"])
 
 
 def _ok(message: str, data: object | None = None) -> dict[str, object | None]:
+    """Wrap successful responses in a frontend-friendly JSON envelope."""
     return {
         "success": True,
         "message": message,
@@ -35,11 +36,13 @@ def _ok(message: str, data: object | None = None) -> dict[str, object | None]:
 
 @router.post("/explain", response_model=ExplainResponse)
 def explain(request: ExplainRequest) -> ExplainResponse:
+    """Return a standalone explainability response for a custom summary payload."""
     return build_explanation(request)
 
 
 @router.get("/lessons", response_model=ApiResponse[LessonOverviewList])
 def get_lessons(db: Session = Depends(get_db)) -> dict[str, object | None]:
+    """Return all lessons available for the lesson selector."""
     lessons = list_lessons(db)
     return _ok("Lessons retrieved successfully.", {"lessons": lessons})
 
@@ -49,6 +52,7 @@ def get_lesson_students(
     lesson_id: int = Path(..., gt=0),
     db: Session = Depends(get_db),
 ) -> dict[str, object | None]:
+    """Return the list of students for one lesson."""
     students = list_students_for_lesson(db, lesson_id)
     return _ok("Lesson students retrieved successfully.", students)
 
@@ -62,6 +66,7 @@ def get_student_lesson_explanation(
     lesson_id: int = Path(..., gt=0),
     db: Session = Depends(get_db),
 ) -> dict[str, object | None]:
+    """Return the read-only explanation view for one student in one lesson."""
     explanation = generate_student_explanation_preview(db, student_id, lesson_id)
     return _ok("Student explanation retrieved successfully.", explanation)
 
@@ -71,6 +76,7 @@ def get_lesson_class_summary(
     lesson_id: int = Path(..., gt=0),
     db: Session = Depends(get_db),
 ) -> dict[str, object | None]:
+    """Return the saved class summary for one lesson."""
     summary = generate_class_summary(db, lesson_id)
     return _ok("Class summary retrieved successfully.", summary)
 
@@ -83,6 +89,7 @@ def generate_lesson_student_explanations(
     lesson_id: int,
     db: Session = Depends(get_db),
 ) -> GenerateStudentExplanationsResponse:
+    """Generate and save student explanations for every student in the lesson."""
     return generate_student_explanations_for_lesson(db, lesson_id)
 
 
@@ -95,6 +102,6 @@ def generate_lesson_class_recommendation(
     request: ClassRecommendationRequest,
     db: Session = Depends(get_db),
 ) -> ClassRecommendationResponse:
-    # Real GPT generation will be integrated here later; this path keeps the contract stable.
+    """Generate and save the class recommendation for the lesson."""
     class_summary = request.class_summary.model_copy(update={"lesson_id": lesson_id})
     return generate_class_recommendation(db, class_summary)

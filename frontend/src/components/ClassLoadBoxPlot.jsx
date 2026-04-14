@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 
 function percentile(sorted, p) {
+  // Simple percentile helper so the box plot can be computed from raw values.
   if (!sorted.length) return null;
   const index = (sorted.length - 1) * p;
   const lower = Math.floor(index);
@@ -22,6 +23,7 @@ function percentile(sorted, p) {
 }
 
 function summarize(values) {
+  // Convert the distribution list into min/quartiles/median/max.
   if (!values.length) {
     return null;
   }
@@ -45,6 +47,7 @@ const labelMap = {
 };
 
 export default function ClassLoadBoxPlot({ values }) {
+  // Recharts renders the box plot style layout using summary statistics plus raw points.
   const stats = summarize(values ?? []);
   const points = (values ?? []).map((value, index) => ({ x: value, y: 0, index }));
 

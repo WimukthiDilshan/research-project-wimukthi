@@ -9,6 +9,7 @@ _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 def _validate_identifier(identifier: str) -> str:
+    """Reject unsafe SQL identifiers before building raw insert statements."""
     if not _IDENTIFIER_PATTERN.match(identifier):
         raise ValueError(f"Invalid SQL identifier: {identifier}")
     return identifier
@@ -19,11 +20,13 @@ def fetch_all(
     query: str,
     params: Mapping[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
+    """Run a SELECT query and return rows as dictionaries."""
     result = db.execute(text(query), params or {})
     return [dict(row._mapping) for row in result]
 
 
 def insert_record(db: Session, table_name: str, payload: Mapping[str, Any]) -> int | None:
+    """Insert a row into a known table and return the inserted row id."""
     if not payload:
         raise ValueError("Payload cannot be empty.")
 

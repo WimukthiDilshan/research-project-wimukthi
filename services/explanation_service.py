@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from models.explanation_models import ExplainRequest, ExplainResponse, ExplanationFactor
-from config.settings import settings
+from services.gpt_client import generate_gpt_text, has_gpt_api_key
 
 
 @dataclass(frozen=True)
@@ -136,32 +136,50 @@ def _resolve_agreed_top_factors(
     return _limit_factors(_rank_factors(overlap_candidates))
 
 
-def _has_gpt_api_key() -> bool:
-    return bool(settings.GPT_API_KEY and settings.GPT_API_KEY.strip())
-
-
-def _build_gpt_placeholder_explanation_text(
+def _build_gpt_explanation_text(
     final_cognitive_load: str,
     factors: list[ExplanationFactor],
 ) -> str:
-    # Real GPT generation will be integrated here later.
-    factor_names = ", ".join(factor.feature for factor in factors[:3]) if factors else "limited signals"
-    return (
-        f"[GPT placeholder] The learner is classified as {final_cognitive_load}. "
-        f"This branch will eventually call GPT using factors such as {factor_names}."
+    factor_lines = "\n".join(
+        f"- {factor.feature}: score={factor.score}, impact={factor.impact}, value={factor.value}"
+        for factor in factors[:5]
+    ) or "- No strong factors available"
+
+    system_prompt = (
+        "You are an educational AI assistant that writes concise, actionable explanations "
+        "for teachers based on student cognitive load signals."
+    )
+    user_prompt = (
+        f"Student final cognitive load: {final_cognitive_load}\n"
+        f"Top factors:\n{factor_lines}\n\n"
+        "Write a short explanation (2-3 sentences) focused on why this load classification likely occurred."
     )
 
+    # Real GPT generation is integrated here.
+    return generate_gpt_text(system_prompt, user_prompt, temperature=0.2)
 
-def _build_gpt_placeholder_recommendation_text(
+
+def _build_gpt_recommendation_text(
     final_cognitive_load: str,
     factors: list[ExplanationFactor],
 ) -> str:
-    # Real GPT recommendation generation will be integrated here later.
-    factor_names = ", ".join(factor.feature for factor in factors[:2]) if factors else "limited signals"
-    return (
-        f"[GPT placeholder] Recommend tailoring instruction for {final_cognitive_load.lower()} load. "
-        f"The future GPT call will use signals like {factor_names}."
+    factor_lines = "\n".join(
+        f"- {factor.feature}: score={factor.score}, impact={factor.impact}, value={factor.value}"
+        for factor in factors[:5]
+    ) or "- No strong factors available"
+
+    system_prompt = (
+        "You are an instructional design assistant. Provide practical next-step recommendations "
+        "for a teacher based on cognitive load evidence."
     )
+    user_prompt = (
+        f"Student final cognitive load: {final_cognitive_load}\n"
+        f"Top factors:\n{factor_lines}\n\n"
+        "Provide one concise recommendation paragraph for the next lesson."
+    )
+
+    # Real GPT recommendation generation is integrated here.
+    return generate_gpt_text(system_prompt, user_prompt, temperature=0.2)
 
 
 def _build_deterministic_explanation_text(final_cognitive_load: str, factors: list[ExplanationFactor]) -> str:
@@ -190,14 +208,24 @@ def _build_deterministic_recommendation_text(final_cognitive_load: str, factors:
 
 
 def _build_explanation_text(final_cognitive_load: str, factors: list[ExplanationFactor]) -> str:
-    if _has_gpt_api_key():
-        return _build_gpt_placeholder_explanation_text(final_cognitive_load, factors)
+    if has_gpt_api_key():
+        try:
+            text = _build_gpt_explanation_text(final_cognitive_load, factors)
+            if text:
+                return text
+        except Exception:
+            pass
     return _build_deterministic_explanation_text(final_cognitive_load, factors)
 
 
 def _build_recommendation_text(final_cognitive_load: str, factors: list[ExplanationFactor]) -> str:
-    if _has_gpt_api_key():
-        return _build_gpt_placeholder_recommendation_text(final_cognitive_load, factors)
+    if has_gpt_api_key():
+        try:
+            text = _build_gpt_recommendation_text(final_cognitive_load, factors)
+            if text:
+                return text
+        except Exception:
+            pass
     return _build_deterministic_recommendation_text(final_cognitive_load, factors)
 
 

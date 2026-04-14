@@ -15,9 +15,10 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def get_db() -> Generator[Session, None, None]:
-    """Yield a database session for future repository or router usage."""
+    """Yield a database session for request-scoped repository access."""
     db = SessionLocal()
     try:
         yield db
     finally:
+        # Always close the session after the request finishes.
         db.close()

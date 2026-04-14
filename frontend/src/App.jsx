@@ -23,10 +23,12 @@ export default function App() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Load lesson options once when the dashboard starts.
     loadLessons();
   }, []);
 
   useEffect(() => {
+    // Refresh lesson-level data whenever the selected lesson changes.
     if (!selectedLessonId) {
       setStudents([]);
       setSelectedStudentId('');
@@ -40,6 +42,7 @@ export default function App() {
   }, [selectedLessonId]);
 
   useEffect(() => {
+    // Keep the student explanation panel in sync with the selected student.
     if (!selectedLessonId || !selectedStudentId) {
       setStudentExplanation(null);
       return;
@@ -49,6 +52,7 @@ export default function App() {
   }, [selectedLessonId, selectedStudentId]);
 
   async function loadLessons() {
+    // Populate the lesson selector from the API.
     try {
       setError('');
       const payload = await fetchLessons();
@@ -62,6 +66,7 @@ export default function App() {
   }
 
   async function loadLessonData(lessonId) {
+    // Load the student list and class summary in parallel for the chosen lesson.
     try {
       setLoading(true);
       setError('');
@@ -71,7 +76,7 @@ export default function App() {
       ]);
       setStudents(studentsPayload.students ?? []);
       setClassSummary(summaryPayload);
-      setClassRecommendation('');
+      setClassRecommendation(summaryPayload?.next_lesson_recommendation ?? '');
       const nextStudentId = studentsPayload.students?.[0]?.student_id;
       setSelectedStudentId(nextStudentId ? String(nextStudentId) : '');
     } catch (err) {
@@ -85,6 +90,7 @@ export default function App() {
   }
 
   async function loadStudentExplanation(studentId, lessonId) {
+    // Fetch the currently selected student's explanation from the backend.
     try {
       setError('');
       const payload = await fetchStudentExplanation(studentId, lessonId);
@@ -96,6 +102,7 @@ export default function App() {
   }
 
   async function handleGenerateStudentExplanations() {
+    // Ask the backend to generate and save explanation rows for the lesson.
     if (!selectedLessonId) return;
     try {
       setLoading(true);
@@ -111,12 +118,14 @@ export default function App() {
   }
 
   async function handleRefreshClassSummary() {
+    // Reload the class summary so the dashboard reflects saved rows.
     if (!selectedLessonId) return;
     try {
       setLoading(true);
       setError('');
       const payload = await fetchClassSummary(selectedLessonId);
       setClassSummary(payload);
+      setClassRecommendation(payload?.next_lesson_recommendation ?? '');
       setStatusMessage('Class summary refreshed.');
     } catch (err) {
       setError(err.message);
@@ -126,6 +135,7 @@ export default function App() {
   }
 
   async function handleGenerateRecommendation() {
+    // Generate the class-level next lesson recommendation from the saved summary.
     if (!selectedLessonId || !classSummary) return;
     try {
       setLoading(true);

@@ -24,6 +24,7 @@ export default function ClassSummary({ summary, recommendation }) {
         Lesson {summary.lesson_id} · {summary.total_students} students
       </p>
       <div className="counts-grid">
+        {/* Show the cognitive load counts exactly as they come from the API. */}
         {Object.entries(counts).map(([label, value]) => (
           <div key={label} className="count-card">
             <span className="count-value">{value}</span>
@@ -33,6 +34,7 @@ export default function ClassSummary({ summary, recommendation }) {
       </div>
       <div className="text-block">
         <h4>Cognitive Load Distribution</h4>
+        {/* Numeric distribution is visualized as a box-plot style chart. */}
         <ClassLoadBoxPlot values={summary.cognitive_load_distribution ?? []} />
       </div>
       <div className="text-block">
@@ -52,7 +54,7 @@ export default function ClassSummary({ summary, recommendation }) {
       </div>
       <div className="text-block">
         <h4>Next Lesson Recommendation</h4>
-        <p>{recommendation || 'No recommendation generated yet.'}</p>
+        <p>{recommendation || summary.next_lesson_recommendation || 'No recommendation generated yet.'}</p>
       </div>
     </section>
   );

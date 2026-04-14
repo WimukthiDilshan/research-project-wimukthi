@@ -5,6 +5,7 @@ function FactorList({ title, factors }) {
     <div className="factor-block">
       <h4>{title}</h4>
       <ul className="factor-list">
+        {/* Display each factor name and score in a compact list. */}
         {factors.map((factor) => (
           <li key={factor.feature}>
             <span className="factor-feature">{factor.feature}</span>
@@ -44,6 +45,7 @@ export default function StudentCard({ explanation }) {
         <p>{explanation.recommendation_text}</p>
       </div>
       <div className="factor-grid">
+        {/* Keep SHAP, LIME, and overlap factors visually separated. */}
         <FactorList title="SHAP Top Factors" factors={explanation.shap_top_factors ?? []} />
         <FactorList title="LIME Top Factors" factors={explanation.lime_top_factors ?? []} />
         <FactorList title="Agreed Top Factors" factors={explanation.agreed_top_factors ?? []} />

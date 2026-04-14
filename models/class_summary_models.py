@@ -28,6 +28,7 @@ class ClassSummary(BaseModel):
     dominant_cognitive_load: CognitiveLoadLabel | None = None
     common_factors: list[CommonFactor]
     cognitive_load_distribution: list[int]
+    next_lesson_recommendation: str | None = None
 
 
 class ClassRecommendationRequest(BaseModel):
