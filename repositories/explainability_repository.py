@@ -34,6 +34,14 @@ def get_students_by_lesson_id(
     return fetch_all(db, query, {"lesson_id": lesson_id})
 
 
+def get_student_lesson_explanations_by_lesson_id(
+    db: Session,
+    lesson_id: int,
+) -> list[dict[str, Any]]:
+    query = "SELECT * FROM student_lesson_explanations WHERE lesson_id = :lesson_id"
+    return fetch_all(db, query, {"lesson_id": lesson_id})
+
+
 def save_student_lesson_explanation(
     db: Session,
     payload: Mapping[str, Any],
