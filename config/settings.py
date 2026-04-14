@@ -5,6 +5,18 @@ class Settings(BaseSettings):
     APP_NAME: str = "Explainable AI Module Backend"
     APP_VERSION: str = "0.1.0"
     API_PREFIX: str = "/api/v1"
+    DB_HOST: str = "localhost"
+    USER: str = "root"
+    PASSWORD: str = ""
+    DB_NAME: str = "explanable_ai"
+    DB_PORT: int = 3306
+
+    @property
+    def SQLALCHEMY_DATABASE_URL(self) -> str:
+        return (
+            f"mysql+pymysql://{self.USER}:{self.PASSWORD}@"
+            f"{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+        )
 
     model_config = SettingsConfigDict(
         env_file=".env",
