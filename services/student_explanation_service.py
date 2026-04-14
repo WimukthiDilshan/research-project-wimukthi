@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import json
+
 from sqlalchemy.orm import Session
 
 from models.explanation_models import (
     ExplainRequest,
     ExplainResponse,
+    GeneratedStudentExplanation,
     StudentSummaryInput,
     SummaryAverages,
     SummaryCounts,
 )
+from repositories.explainability_repository import save_student_lesson_explanation
 from services.explanation_service import build_explanation
 from services.student_summary_service import generate_student_summary
 
@@ -29,6 +33,72 @@ def _build_explain_request(student_summary: dict[str, object], final_cognitive_l
             counts=SummaryCounts.model_validate(counts_payload),
         ),
         final_cognitive_load=_normalize_final_cognitive_load(final_cognitive_load),
+    )
+
+
+def _flatten_averages(averages: SummaryAverages) -> dict[str, float | None]:
+    return averages.model_dump()
+
+
+def _serialize_factors(factors: list[object]) -> str:
+    return json.dumps([factor.model_dump() for factor in factors], ensure_ascii=False)
+
+
+def _build_save_payload(
+    student_id: int,
+    lesson_id: int,
+    final_cognitive_load: str,
+    averages: SummaryAverages,
+    explanation: ExplainResponse,
+) -> dict[str, object]:
+    flattened_averages = _flatten_averages(averages)
+    payload: dict[str, object] = {
+        "student_id": student_id,
+        "lesson_id": lesson_id,
+        "final_cognitive_load": final_cognitive_load,
+        "explanation_text": explanation.explanation_text,
+        "recommendation_text": explanation.recommendation_text,
+        "shap_top_factors": _serialize_factors(explanation.shap_top_factors),
+        "lime_top_factors": _serialize_factors(explanation.lime_top_factors),
+        "agreed_top_factors": _serialize_factors(explanation.agreed_top_factors),
+    }
+    payload.update(flattened_averages)
+    return payload
+
+
+def generate_student_explanation_record(
+    db: Session,
+    student_id: int,
+    lesson_id: int,
+) -> GeneratedStudentExplanation:
+    student_summary = generate_student_summary(db, student_id, lesson_id)
+    explain_request = _build_explain_request(
+        student_summary,
+        student_summary.get("final_cognitive_load"),
+    )
+    explanation = build_explanation(explain_request)
+    saved_row_id = save_student_lesson_explanation(
+        db,
+        _build_save_payload(
+            student_id=student_id,
+            lesson_id=lesson_id,
+            final_cognitive_load=explain_request.final_cognitive_load,
+            averages=explain_request.summary.averages,
+            explanation=explanation,
+        ),
+    )
+
+    return GeneratedStudentExplanation(
+        student_id=student_id,
+        lesson_id=lesson_id,
+        final_cognitive_load=explain_request.final_cognitive_load,
+        averages=explain_request.summary.averages,
+        shap_top_factors=explanation.shap_top_factors,
+        lime_top_factors=explanation.lime_top_factors,
+        agreed_top_factors=explanation.agreed_top_factors,
+        explanation_text=explanation.explanation_text,
+        recommendation_text=explanation.recommendation_text,
+        saved_row_id=saved_row_id,
     )
 
 

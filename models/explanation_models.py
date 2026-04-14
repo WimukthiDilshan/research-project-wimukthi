@@ -54,3 +54,22 @@ class ExplainResponse(BaseModel):
     agreed_top_factors: list[ExplanationFactor]
     explanation_text: str
     recommendation_text: str
+
+
+class GeneratedStudentExplanation(BaseModel):
+    student_id: int
+    lesson_id: int
+    final_cognitive_load: CognitiveLoadLabel
+    averages: SummaryAverages
+    shap_top_factors: list[ExplanationFactor]
+    lime_top_factors: list[ExplanationFactor]
+    agreed_top_factors: list[ExplanationFactor]
+    explanation_text: str
+    recommendation_text: str
+    saved_row_id: int | None = None
+
+
+class GenerateStudentExplanationsResponse(BaseModel):
+    lesson_id: int
+    count: int
+    items: list[GeneratedStudentExplanation]
