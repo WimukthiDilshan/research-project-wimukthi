@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from models.explanation_models import ExplainRequest, ExplainResponse, ExplanationFactor
+from config.settings import settings
 
 
 @dataclass(frozen=True)
@@ -135,7 +136,35 @@ def _resolve_agreed_top_factors(
     return _limit_factors(_rank_factors(overlap_candidates))
 
 
-def _build_explanation_text(final_cognitive_load: str, factors: list[ExplanationFactor]) -> str:
+def _has_gpt_api_key() -> bool:
+    return bool(settings.GPT_API_KEY and settings.GPT_API_KEY.strip())
+
+
+def _build_gpt_placeholder_explanation_text(
+    final_cognitive_load: str,
+    factors: list[ExplanationFactor],
+) -> str:
+    # Real GPT generation will be integrated here later.
+    factor_names = ", ".join(factor.feature for factor in factors[:3]) if factors else "limited signals"
+    return (
+        f"[GPT placeholder] The learner is classified as {final_cognitive_load}. "
+        f"This branch will eventually call GPT using factors such as {factor_names}."
+    )
+
+
+def _build_gpt_placeholder_recommendation_text(
+    final_cognitive_load: str,
+    factors: list[ExplanationFactor],
+) -> str:
+    # Real GPT recommendation generation will be integrated here later.
+    factor_names = ", ".join(factor.feature for factor in factors[:2]) if factors else "limited signals"
+    return (
+        f"[GPT placeholder] Recommend tailoring instruction for {final_cognitive_load.lower()} load. "
+        f"The future GPT call will use signals like {factor_names}."
+    )
+
+
+def _build_deterministic_explanation_text(final_cognitive_load: str, factors: list[ExplanationFactor]) -> str:
     if not factors:
         return f"The learner shows a {final_cognitive_load.lower()} cognitive load profile with limited evidence from the current summary."
 
@@ -146,7 +175,7 @@ def _build_explanation_text(final_cognitive_load: str, factors: list[Explanation
     )
 
 
-def _build_recommendation_text(final_cognitive_load: str, factors: list[ExplanationFactor]) -> str:
+def _build_deterministic_recommendation_text(final_cognitive_load: str, factors: list[ExplanationFactor]) -> str:
     if not factors:
         return "Collect more interaction data and re-evaluate the learner profile before making instructional changes."
 
@@ -158,6 +187,18 @@ def _build_recommendation_text(final_cognitive_load: str, factors: list[Explanat
     if final_cognitive_load == "Medium":
         return f"Maintain the current pace but add small scaffolds and confidence checks. {factor_reasons}"
     return f"Keep the experience concise and monitor for changes in effort or confusion. {factor_reasons}"
+
+
+def _build_explanation_text(final_cognitive_load: str, factors: list[ExplanationFactor]) -> str:
+    if _has_gpt_api_key():
+        return _build_gpt_placeholder_explanation_text(final_cognitive_load, factors)
+    return _build_deterministic_explanation_text(final_cognitive_load, factors)
+
+
+def _build_recommendation_text(final_cognitive_load: str, factors: list[ExplanationFactor]) -> str:
+    if _has_gpt_api_key():
+        return _build_gpt_placeholder_recommendation_text(final_cognitive_load, factors)
+    return _build_deterministic_recommendation_text(final_cognitive_load, factors)
 
 
 def build_explanation(request: ExplainRequest) -> ExplainResponse:
