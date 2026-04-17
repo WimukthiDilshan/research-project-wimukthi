@@ -17,6 +17,31 @@ function FactorList({ title, factors }) {
   );
 }
 
+function AverageList({ averages }) {
+  const items = Object.entries(averages ?? {})
+    .filter(([, value]) => value !== null && value !== undefined)
+    .map(([key, value]) => ({
+      key,
+      label: key.replace(/^avg_/, '').replace(/_/g, ' '),
+      value: Number(value),
+    }));
+
+  if (!items.length) {
+    return <p className="muted">Average values are not available for this student.</p>;
+  }
+
+  return (
+    <ul className="factor-list">
+      {items.map((item) => (
+        <li key={item.key}>
+          <span className="factor-feature">{item.label}</span>
+          <span className="factor-score">{item.value.toFixed(3)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function StudentCard({
   explanation,
   highLoadPeriods = [],
@@ -42,6 +67,10 @@ export default function StudentCard({
           <div className="text-block">
             <h4>Recommendation</h4>
             <p>{explanation.recommendation_text}</p>
+          </div>
+          <div className="text-block">
+            <h4>Student Average Values</h4>
+            <AverageList averages={explanation.summary?.averages} />
           </div>
           <div className="factor-grid">
             {/* Keep SHAP, LIME, and overlap factors visually separated. */}

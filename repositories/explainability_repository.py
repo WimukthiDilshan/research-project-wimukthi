@@ -71,6 +71,21 @@ def get_student_lesson_explanations_by_lesson_id(
     return fetch_all(db, query, {"lesson_id": lesson_id})
 
 
+def get_latest_student_lesson_explanation_by_student_and_lesson(
+    db: Session,
+    student_id: int,
+    lesson_id: int,
+) -> dict[str, Any] | None:
+    """Return the latest saved student explanation row for one student and lesson."""
+    query = (
+        "SELECT * FROM student_lesson_explanations "
+        "WHERE student_id = :student_id AND lesson_id = :lesson_id "
+        "ORDER BY id DESC LIMIT 1"
+    )
+    rows = fetch_all(db, query, {"student_id": student_id, "lesson_id": lesson_id})
+    return rows[0] if rows else None
+
+
 def get_latest_class_lesson_summary_by_lesson_id(
     db: Session,
     lesson_id: int,

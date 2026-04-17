@@ -16,6 +16,7 @@ from models.explanation_models import (
 from models.api_response_models import StudentExplanationData
 from repositories.explainability_repository import (
     get_cognitive_load_logs_by_student_and_lesson,
+    get_latest_student_lesson_explanation_by_student_and_lesson,
     get_students_by_lesson_id,
     save_student_lesson_explanation,
 )
@@ -51,6 +52,109 @@ def _flatten_averages(averages: SummaryAverages) -> dict[str, float | None]:
 def _serialize_factors(factors: list[object]) -> str:
     """Serialize explanation factors to JSON for database storage."""
     return json.dumps([factor.model_dump() for factor in factors], ensure_ascii=False)
+
+
+def _deserialize_factors(raw_value: object) -> list[object]:
+    """Deserialize JSON factor payloads from saved rows safely."""
+    if raw_value is None:
+        return []
+    if not isinstance(raw_value, str):
+        return []
+    try:
+        parsed = json.loads(raw_value)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+
+    normalized: list[dict[str, object]] = []
+    for item in parsed:
+        if not isinstance(item, dict):
+            continue
+
+        feature = str(item.get("feature") or "unknown")
+        raw_score = item.get("score", 0)
+        try:
+            score = float(raw_score)
+        except (TypeError, ValueError):
+            score = 0.0
+
+        impact = item.get("impact")
+        if impact not in {"negative", "neutral", "positive"}:
+            if score > 0:
+                impact = "positive"
+            elif score < 0:
+                impact = "negative"
+            else:
+                impact = "neutral"
+
+        raw_value_field = item.get("value")
+        try:
+            value = float(raw_value_field) if raw_value_field is not None else None
+        except (TypeError, ValueError):
+            value = None
+
+        reason = str(item.get("reason") or "Loaded from saved explanation row.")
+
+        normalized.append(
+            {
+                "feature": feature,
+                "value": value,
+                "score": abs(score),
+                "impact": impact,
+                "reason": reason,
+            }
+        )
+
+    return normalized
+
+
+def _build_summary_from_saved_row(saved_row: dict[str, object]) -> StudentSummaryInput:
+    averages = SummaryAverages.model_validate(
+        {
+            "avg_pause_frequency": saved_row.get("avg_pause_frequency"),
+            "avg_navigation_count_video": saved_row.get("avg_navigation_count_video"),
+            "avg_rewatch_segments": saved_row.get("avg_rewatch_segments"),
+            "avg_playback_rate_change": saved_row.get("avg_playback_rate_change"),
+            "avg_idle_duration_video": saved_row.get("avg_idle_duration_video"),
+            "avg_time_on_content": saved_row.get("avg_time_on_content"),
+            "avg_navigation_count_adaptation": saved_row.get("avg_navigation_count_adaptation"),
+            "avg_revisit_frequency": saved_row.get("avg_revisit_frequency"),
+            "avg_idle_duration_adaptation": saved_row.get("avg_idle_duration_adaptation"),
+            "avg_quiz_response_time": saved_row.get("avg_quiz_response_time"),
+            "avg_error_rate": saved_row.get("avg_error_rate"),
+        }
+    )
+    counts = SummaryCounts.model_validate(
+        {
+            "Very Low": int(saved_row.get("very_low_count") or 0),
+            "Low": int(saved_row.get("low_count") or 0),
+            "Medium": int(saved_row.get("medium_count") or 0),
+            "High": int(saved_row.get("high_count") or 0),
+            "Very High": int(saved_row.get("very_high_count") or 0),
+        }
+    )
+    return StudentSummaryInput(averages=averages, counts=counts)
+
+
+def _build_preview_from_saved_row(
+    student_id: int,
+    lesson_id: int,
+    saved_row: dict[str, object],
+) -> StudentExplanationData:
+    raw_final_label = saved_row.get("final_cognitive_load")
+    final_label = str(raw_final_label).strip() if raw_final_label is not None else None
+    return StudentExplanationData(
+        student_id=student_id,
+        lesson_id=lesson_id,
+        summary=_build_summary_from_saved_row(saved_row),
+        final_cognitive_load=_normalize_final_cognitive_load(final_label),
+        shap_top_factors=_deserialize_factors(saved_row.get("shap_top_factors_json")),
+        lime_top_factors=_deserialize_factors(saved_row.get("lime_top_factors_json")),
+        agreed_top_factors=_deserialize_factors(saved_row.get("agreed_top_factors_json")),
+        explanation_text=str(saved_row.get("explanation_text") or ""),
+        recommendation_text=str(saved_row.get("recommendation_text") or ""),
+    )
 
 
 def _build_save_payload(
@@ -150,7 +254,14 @@ def generate_student_explanation_preview(
         student_summary,
         student_summary.get("final_cognitive_load"),
     )
-    explanation = build_explanation(explain_request, background_rows=background_rows)
+    try:
+        explanation = build_explanation(explain_request, background_rows=background_rows)
+    except Exception:
+        # If live explainability fails (e.g., teammate API unavailable), show the latest saved explanation.
+        saved_row = get_latest_student_lesson_explanation_by_student_and_lesson(db, student_id, lesson_id)
+        if saved_row is not None:
+            return _build_preview_from_saved_row(student_id, lesson_id, saved_row)
+        raise
 
     return StudentExplanationData(
         student_id=student_id,
