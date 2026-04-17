@@ -16,6 +16,7 @@ from models.explanation_models import (
 from models.api_response_models import StudentExplanationData
 from repositories.explainability_repository import (
     get_cognitive_load_logs_by_student_and_lesson,
+    get_students_by_lesson_id,
     save_student_lesson_explanation,
 )
 from services.explanation_service import build_explanation
@@ -88,12 +89,17 @@ def generate_student_explanation_record(
     lesson_id: int,
 ) -> GeneratedStudentExplanation:
     """Build, explain, and persist one student's lesson explanation."""
+    # 1) Aggregate this student's logs into summary averages/counts.
     student_summary = generate_student_summary(db, student_id, lesson_id)
+    # 2) Use lesson rows as SHAP/LIME background distribution.
+    background_rows = get_students_by_lesson_id(db, lesson_id)
     explain_request = _build_explain_request(
         student_summary,
         student_summary.get("final_cognitive_load"),
     )
-    explanation = build_explanation(explain_request)
+    # 3) Compute SHAP/LIME and explanation text.
+    explanation = build_explanation(explain_request, background_rows=background_rows)
+    # 4) Persist generated result for later class-level aggregation and dashboard reuse.
     saved_row_id = save_student_lesson_explanation(
         db,
         _build_save_payload(
@@ -139,11 +145,12 @@ def generate_student_explanation_preview(
         )
 
     student_summary = generate_student_summary(db, student_id, lesson_id)
+    background_rows = get_students_by_lesson_id(db, lesson_id)
     explain_request = _build_explain_request(
         student_summary,
         student_summary.get("final_cognitive_load"),
     )
-    explanation = build_explanation(explain_request)
+    explanation = build_explanation(explain_request, background_rows=background_rows)
 
     return StudentExplanationData(
         student_id=student_id,
@@ -165,8 +172,10 @@ def generate_student_explanation(
 ) -> ExplainResponse:
     """Return the raw explain response without saving it."""
     student_summary = generate_student_summary(db, student_id, lesson_id)
+    # Same background strategy as preview/save paths for consistent explanations.
+    background_rows = get_students_by_lesson_id(db, lesson_id)
     explain_request = _build_explain_request(
         student_summary,
         student_summary.get("final_cognitive_load"),
     )
-    return build_explanation(explain_request)
+    return build_explanation(explain_request, background_rows=background_rows)

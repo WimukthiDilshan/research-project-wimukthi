@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     PASSWORD: str = ""
     DB_NAME: str = "explanable_ai"
     DB_PORT: int = 3306
+    # External prediction microservice used as the black-box model for SHAP/LIME.
+    EXPLAINABILITY_MICROSERVICE_URL: str = ""
+    # Path on the microservice that returns cognitive load predictions.
+    EXPLAINABILITY_MICROSERVICE_PATH: str = "/predict"
+    # Timeout for the remote microservice call in seconds.
+    EXPLAINABILITY_MICROSERVICE_TIMEOUT_SECONDS: int = 30
 
     @property
     def SQLALCHEMY_DATABASE_URL(self) -> str:
