@@ -3,6 +3,8 @@ import ClassSummary from './components/ClassSummary';
 import StudentCard from './components/StudentCard';
 import {
   fetchClassSummary,
+  fetchHighLoadPeriodExplanation,
+  fetchHighLoadPeriods,
   fetchLessonStudents,
   fetchLessons,
   fetchStudentExplanation,
@@ -16,6 +18,9 @@ export default function App() {
   const [students, setStudents] = useState([]);
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [studentExplanation, setStudentExplanation] = useState(null);
+  const [highLoadPeriods, setHighLoadPeriods] = useState([]);
+  const [selectedPeriodId, setSelectedPeriodId] = useState('');
+  const [periodExplanation, setPeriodExplanation] = useState(null);
   const [classSummary, setClassSummary] = useState(null);
   const [classRecommendation, setClassRecommendation] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,11 +50,23 @@ export default function App() {
     // Keep the student explanation panel in sync with the selected student.
     if (!selectedLessonId || !selectedStudentId) {
       setStudentExplanation(null);
+      setHighLoadPeriods([]);
+      setSelectedPeriodId('');
+      setPeriodExplanation(null);
       return;
     }
 
     loadStudentExplanation(selectedStudentId, selectedLessonId);
+    loadHighLoadPeriods(selectedStudentId, selectedLessonId);
   }, [selectedLessonId, selectedStudentId]);
+
+  useEffect(() => {
+    if (!selectedStudentId || !selectedLessonId || !selectedPeriodId) {
+      setPeriodExplanation(null);
+      return;
+    }
+    loadPeriodExplanation(selectedStudentId, selectedLessonId, selectedPeriodId);
+  }, [selectedStudentId, selectedLessonId, selectedPeriodId]);
 
   async function loadLessons() {
     // Populate the lesson selector from the API.
@@ -98,6 +115,35 @@ export default function App() {
     } catch (err) {
       setError(err.message);
       setStudentExplanation(null);
+    }
+  }
+
+  async function loadHighLoadPeriods(studentId, lessonId) {
+    try {
+      setError('');
+      const payload = await fetchHighLoadPeriods(studentId, lessonId);
+      setHighLoadPeriods(payload.periods ?? []);
+      const firstPeriodId = payload.periods?.[0]?.period_id;
+      setSelectedPeriodId(firstPeriodId ? String(firstPeriodId) : '');
+      if (!firstPeriodId) {
+        setPeriodExplanation(null);
+      }
+    } catch (err) {
+      setError(err.message);
+      setHighLoadPeriods([]);
+      setSelectedPeriodId('');
+      setPeriodExplanation(null);
+    }
+  }
+
+  async function loadPeriodExplanation(studentId, lessonId, periodId) {
+    try {
+      setError('');
+      const payload = await fetchHighLoadPeriodExplanation(studentId, lessonId, periodId);
+      setPeriodExplanation(payload);
+    } catch (err) {
+      setError(err.message);
+      setPeriodExplanation(null);
     }
   }
 
@@ -207,7 +253,13 @@ export default function App() {
       {statusMessage ? <div className="alert success">{statusMessage}</div> : null}
 
       <main className="dashboard-grid">
-        <StudentCard explanation={studentExplanation} />
+        <StudentCard
+          explanation={studentExplanation}
+          highLoadPeriods={highLoadPeriods}
+          selectedPeriodId={selectedPeriodId}
+          onSelectPeriod={(periodId) => setSelectedPeriodId(String(periodId))}
+          periodExplanation={periodExplanation}
+        />
         <ClassSummary summary={classSummary} recommendation={classRecommendation} />
       </main>
 

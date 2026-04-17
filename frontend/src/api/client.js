@@ -40,6 +40,16 @@ export async function fetchStudentExplanation(studentId, lessonId) {
   return request(`/students/${studentId}/lessons/${lessonId}/explanation`);
 }
 
+export async function fetchHighLoadPeriods(studentId, lessonId) {
+  // Load high-load periods for one student in one lesson.
+  return request(`/students/${studentId}/lessons/${lessonId}/high-load-periods`);
+}
+
+export async function fetchHighLoadPeriodExplanation(studentId, lessonId, periodId) {
+  // Load period-level explanation for one selected high-load period.
+  return request(`/students/${studentId}/lessons/${lessonId}/high-load-periods/${periodId}/explanation`);
+}
+
 export async function fetchClassSummary(lessonId) {
   // Load the class summary for one lesson.
   return request(`/lessons/${lessonId}/class-summary`);

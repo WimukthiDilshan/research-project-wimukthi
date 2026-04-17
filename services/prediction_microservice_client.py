@@ -21,6 +21,14 @@ SCORE_TO_LABEL = {
     5: "Very High",
 }
 
+LABEL_NORMALIZATION = {
+    "very low": "Very Low",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "very high": "Very High",
+}
+
 
 def _build_url() -> str:
     base_url = settings.EXPLAINABILITY_MICROSERVICE_URL.strip().rstrip("/")
@@ -64,7 +72,16 @@ def prediction_label_from_payload(payload: Mapping[str, Any]) -> str:
     for key in ("predicted_label", "predicted_cognitive_load", "final_cognitive_load", "cognitive_load"):
         value = payload.get(key)
         if isinstance(value, str) and value.strip():
-            return value.strip()
+            normalized = value.strip()
+            canonical = LABEL_NORMALIZATION.get(normalized.lower())
+            if canonical is not None:
+                return canonical
+            try:
+                numeric = int(float(normalized))
+            except ValueError:
+                return normalized
+            if numeric in SCORE_TO_LABEL:
+                return SCORE_TO_LABEL[numeric]
 
     # Support numeric score output style: 1..5 mapped to the agreed label set.
     for key in ("score", "predicted_score", "cognitive_load_score", "label_score"):
@@ -72,7 +89,7 @@ def prediction_label_from_payload(payload: Mapping[str, Any]) -> str:
         if raw_score is None:
             continue
         try:
-            score = int(raw_score)
+            score = int(float(raw_score))
         except (TypeError, ValueError):
             continue
         if score in SCORE_TO_LABEL:

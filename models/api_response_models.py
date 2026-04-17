@@ -45,3 +45,33 @@ class StudentExplanationData(BaseModel):
     agreed_top_factors: list[ExplanationFactor]
     explanation_text: str
     recommendation_text: str
+
+
+class HighLoadPeriodItem(BaseModel):
+    period_id: int
+    start_time: str | None = None
+    end_time: str | None = None
+    row_count: int
+    dominant_cognitive_load: str
+
+
+class HighLoadPeriodListData(BaseModel):
+    student_id: int
+    lesson_id: int
+    periods: list[HighLoadPeriodItem]
+
+
+class PeriodExplanationData(BaseModel):
+    student_id: int
+    lesson_id: int
+    period_id: int
+    start_time: str | None = None
+    end_time: str | None = None
+    row_count: int
+    summary: StudentSummaryInput
+    final_cognitive_load: str | None = None
+    shap_top_factors: list[ExplanationFactor]
+    lime_top_factors: list[ExplanationFactor]
+    agreed_top_factors: list[ExplanationFactor]
+    explanation_text: str
+    recommendation_text: str

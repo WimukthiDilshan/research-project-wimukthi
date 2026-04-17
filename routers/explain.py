@@ -4,8 +4,10 @@ from sqlalchemy.orm import Session
 from config.database import get_db
 from models.api_response_models import (
     ApiResponse,
+    HighLoadPeriodListData,
     LessonOverviewList,
     LessonStudentsData,
+    PeriodExplanationData,
     StudentExplanationData,
 )
 from models.class_summary_models import ClassRecommendationRequest, ClassRecommendationResponse, ClassSummary
@@ -19,6 +21,7 @@ from services.class_summary_service import generate_class_summary
 from services.class_recommendation_service import generate_class_recommendation
 from services.lesson_explanation_generation_service import generate_student_explanations_for_lesson
 from services.lesson_lookup_service import list_lessons, list_students_for_lesson
+from services.high_load_period_service import explain_high_load_period, list_high_load_periods
 from services.student_explanation_service import generate_student_explanation_preview
 
 router = APIRouter(tags=["explainability"])
@@ -69,6 +72,35 @@ def get_student_lesson_explanation(
     """Return the read-only explanation view for one student in one lesson."""
     explanation = generate_student_explanation_preview(db, student_id, lesson_id)
     return _ok("Student explanation retrieved successfully.", explanation)
+
+
+@router.get(
+    "/students/{student_id}/lessons/{lesson_id}/high-load-periods",
+    response_model=ApiResponse[HighLoadPeriodListData],
+)
+def get_student_high_load_periods(
+    student_id: int = Path(..., gt=0),
+    lesson_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+) -> dict[str, object | None]:
+    """Return high-load periods (High/Very High) for one student in one lesson."""
+    periods = list_high_load_periods(db, student_id, lesson_id)
+    return _ok("High-load periods retrieved successfully.", periods)
+
+
+@router.get(
+    "/students/{student_id}/lessons/{lesson_id}/high-load-periods/{period_id}/explanation",
+    response_model=ApiResponse[PeriodExplanationData],
+)
+def get_student_high_load_period_explanation(
+    student_id: int = Path(..., gt=0),
+    lesson_id: int = Path(..., gt=0),
+    period_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+) -> dict[str, object | None]:
+    """Return SHAP/LIME explanation for one selected high-load period."""
+    explanation = explain_high_load_period(db, student_id, lesson_id, period_id)
+    return _ok("High-load period explanation retrieved successfully.", explanation)
 
 
 @router.get("/lessons/{lesson_id}/class-summary", response_model=ApiResponse[ClassSummary])
